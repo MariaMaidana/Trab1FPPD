@@ -33,29 +33,9 @@ func ElectionControler(in chan int) {
 
 	// mudar o processo 0 - canal de entrada 3 - para falho (defini mensagem tipo 2 pra isto)
 
-	temp.tipo = 2
-	chans[3] <- temp
-	fmt.Printf("Controle: mudar o processo 0 para falho\n")
-
-	fmt.Printf("Controle: confirmação %d\n", <-in) // receber e imprimir confirmação
-
-	// mudar o processo 1 - canal de entrada 0 - para falho (defini mensagem tipo 2 pra isto)
-
-	temp.tipo = 3
-	chans[0] <- temp
-	fmt.Printf("Controle: mudar o processo 1 para falho\n")
-	fmt.Printf("Controle: confirmação %d\n", <-in) // receber e imprimir confirmação
-
-	// matar os outrs processos com mensagens não conhecidas (só pra cosumir a leitura)
-
-	temp.tipo = 3
-	chans[1] <- temp
-	fmt.Printf("Controle: mudar o processo 2 para falho\n")
-	fmt.Printf("Controle: confirmação %d\n", <-in)
-
 	temp.tipo = 4
 	chans[2] <- temp
-	fmt.Printf("Controle: mudar o processo 3 para falho\n")
+	fmt.Printf("Controle: Iniciando eleição\n")
 	fmt.Printf("Controle: confirmação %d\n", <-in)
 
 	fmt.Println("\n   Processo controlador concluído\n")
@@ -76,23 +56,36 @@ func ElectionStage(TaskId int, in chan mensagem, out chan mensagem, leader int) 
 		fmt.Printf("%2d: recebi mensagem %d, [ %d, %d, %d ]\n", TaskId, temp.tipo, temp.corpo[0], temp.corpo[1], temp.corpo[2])
 
 		switch temp.tipo {
+		// case 1:
+		// 	{
+		// 		if temp.corpo[0] == TaskId {
+		// 			fmt.Printf("%2d: eleição concluída\n", TaskId)
+		// 			controle <- -5
+		// 			return
+		// 		}
+		// 		isElection = true
+		// 		fmt.Printf("%2d: eleição iniciada: %v\n", TaskId, isElection)
+		// 		out <- temp
+		// 		controle <- -5
+		// 	}
 		case 1:
 			{
-				if temp.corpo[0] == TaskId {
-					fmt.Printf("%2d: eleição concluída\n", TaskId)
-					controle <- -5
-					return
-				}
 				isElection = true
+				if temp.corpo[0] > TaskId {
+					temp.corpo[0] = TaskId
+				}
 				fmt.Printf("%2d: eleição iniciada: %v\n", TaskId, isElection)
+				fmt.Printf("%2d: votei em %d\n", TaskId, temp.corpo[0])
 				out <- temp
 				controle <- -5
 			}
 		case 2:
 			{
-				bFailed = true
-				fmt.Printf("%2d: falho %v \n", TaskId, bFailed)
+				isElection = false
+				actualLeader = temp.corpo[0]
 				fmt.Printf("%2d: lider atual %d\n", TaskId, actualLeader)
+				fmt.Printf("%2d: eleição concluída\n", TaskId)
+				out <- temp
 				controle <- -5
 			}
 		case 3:
@@ -104,13 +97,17 @@ func ElectionStage(TaskId int, in chan mensagem, out chan mensagem, leader int) 
 			}
 		case 4:
 			{
-				if !isElection {
-					isElection = true
-					temp.corpo[0] = TaskId
-				}
+				isElection = true
+				temp.corpo[0] = TaskId
 				fmt.Printf("%2d: eleição iniciada: %v \n", TaskId, isElection)
-				fmt.Printf("%2d: lider atual %d\n", TaskId, actualLeader)
+				fmt.Printf("%2d: votei em %d\n", TaskId, temp.corpo[0])
 				temp.tipo = 1
+				out <- temp
+				temp = <-in
+				fmt.Printf("%2d: ESTOU VIVO!!!\n", TaskId)
+				fmt.Printf("Tipo da mensagem: %d\n", temp.tipo)
+				temp.tipo = 2
+				fmt.Printf("%2d: Confirmando líder\n", TaskId)
 				out <- temp
 				controle <- -5
 			}
